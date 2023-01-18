@@ -56,14 +56,12 @@ x-airflow-common:
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
     AIRFLOW__API__AUTH_BACKEND: 'airflow.api.auth.backend.basic_auth'
-    GCP_PROJECT: 'himsika-event-feedback'
-    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:- apache-airflow-providers-google==2.2.0 google-api-python-client==1.12.11 google-auth==2.14.1 gspread==5.4}
+    GCP_PROJECT: ${GCP_PROJECT}
+    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:- apache-airflow-providers-google==2.2.0 gspread==5.4}
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
-    - ./data:/opt/airflow/data
-    - ./creds:/opt/airflow/creds
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
@@ -74,11 +72,11 @@ x-airflow-common:
   deploy:
     resources:
       limits:
-        cpus: 0.5
-        memory: 1800m
+        cpus: "3"
+        memory: 4200m
       reservations:
-        cpus: 0.25
-        memory: 200m
+        cpus: "2"
+        memory: 500m
 
 services:
   postgres:
@@ -234,8 +232,8 @@ services:
           echo "   https://airflow.apache.org/docs/apache-airflow/stable/start/docker.html#before-you-begin"
           echo
         fi
-        mkdir -p /sources/logs /sources/dags /sources/plugins /sources/data /sources/creds
-        chown -R "${AIRFLOW_UID}:0" /sources/{logs,dags,plugins,data,creds}
+        mkdir -p /sources/logs /sources/dags /sources/plugins
+        chown -R "${AIRFLOW_UID}:0" /sources/{logs,dags,plugins}
         exec /entrypoint airflow version
     # yamllint enable rule:line-length
     environment:

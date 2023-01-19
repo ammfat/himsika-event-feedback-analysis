@@ -57,7 +57,7 @@ x-airflow-common:
     AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
     AIRFLOW__API__AUTH_BACKEND: 'airflow.api.auth.backend.basic_auth'
     GCP_PROJECT: ${GCP_PROJECT}
-    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:- apache-airflow-providers-google==2.2.0 gspread==5.4}
+    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
@@ -72,7 +72,7 @@ x-airflow-common:
   deploy:
     resources:
       limits:
-        cpus: "3"
+        cpus: "2"
         memory: 4200m
       reservations:
         cpus: "2"

@@ -49,8 +49,8 @@ with DAG(
         python_callable=get_dag_details
     )
 
-    bq_event_to_bq_event = BigQueryOperator(
-        task_id='bq_event_to_bq_event',
+    bq_cabinet_to_bq_temporary = BigQueryOperator(
+        task_id='bq_cabinet_to_bq_temporary',
         sql = f"""
             SELECT * FROM `{source_table_id}` LIMIT 10
             """,
@@ -59,7 +59,7 @@ with DAG(
         write_disposition='WRITE_TRUNCATE'
     )
 
-    print_dag_details >> bq_event_to_bq_event
+    print_dag_details >> bq_cabinet_to_bq_temporary
 
 if __name__ == '__main__':
     dag.cli()

@@ -3,7 +3,7 @@ from airflow.operators.bash_operator import BashOperator
 from airflow.utils.dates import days_ago
 
 args = {
-    'owner': 'ammfat-developer',
+    'owner': 'ammfat',
 }
 
 with DAG(
@@ -25,7 +25,7 @@ with DAG(
 
     print_ammfat = BashOperator(
         task_id='print_ammfat',
-        bash_command='echo Hello from Ammfat!'
+        bash_command='pwd && echo Hello from Ammfat!'
     )
 
     print_hello >> print_world >> print_ammfat

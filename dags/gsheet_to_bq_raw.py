@@ -99,7 +99,7 @@ with DAG(
         , python_callable=_gsheet_to_bq_raw_data
     )
 
-    print_dag_details >> gsheet_sensor >> gsheet_to_bq_raw_data
+    get_dag_details >> gsheet_sensor >> gsheet_to_bq_raw_data
 
 if __name__ == '__main__':
     dag.cli()

@@ -62,16 +62,20 @@ def _gsheet_sensor(ti, **kwargs):
     ti.xcom_push(key='sheets', value=sheets)
 
 def _gsheet_to_bq_raw_data(ti, **kwargs):
-    import gspread
-    import pandas as pd
-    from google.cloud import bigquery
-
     date = ti.xcom_pull(key='date', task_ids='gsheet_sensor')
     sheets = ti.xcom_pull(key='sheets', task_ids='gsheet_sensor')
 
     print('Date Range: ', date[0], ' - ', date[1])
     for sheet in sheets:
         print(sheet['id'].ljust(45), sheet['createdTime'].ljust(25), sheet['name'])
+
+    """ If len sheets = 0,
+    then mark tasks as success 
+    else, continue to load data to BQ """
+
+    import gspread
+    import pandas as pd
+    from google.cloud import bigquery
 
     events = [
         sheet['name'].replace('Feedback ', '')
@@ -98,11 +102,15 @@ def _gsheet_to_bq_raw_data(ti, **kwargs):
 
     with bq_client:
         import json
+        from time import sleep
         
         for df, event in zip(dfs, events):
             table_name = event.lower()\
                         .replace(' -', '')\
+                        .replace('\'', '')\
                         .replace('/', '_')\
+                        .replace('(', '')\
+                        .replace(')', '')\
                         .replace(' ', '_')
 
             table_id = f'{bq_raw_data_dataset}.{table_name}'
@@ -124,11 +132,17 @@ def _gsheet_to_bq_raw_data(ti, **kwargs):
                 , write_disposition="WRITE_TRUNCATE"
             )
 
-            job = bq_client.load_table_from_json(df_json_object, table_id, job_config=job_config)
-            job.result()
+            try:
+                job = bq_client.load_table_from_json(df_json_object, table_id, job_config=job_config)
+                job.result()
+            except Exception as e:
+                print(e)
+
+                sleep(120)
+                job = bq_client.load_table_from_json(df_json_object, table_id, job_config=job_config)
+                job.result()                
 
             print('Table {} successfully loaded.'.format(table_id))
-
 
 with DAG(
         dag_id='gsheet_to_bq_raw'

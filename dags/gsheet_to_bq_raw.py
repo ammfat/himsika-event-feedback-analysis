@@ -146,11 +146,15 @@ with DAG(
     gsheet_sensor = PythonOperator(
         task_id='gsheet_sensor'
         , python_callable=_gsheet_sensor
+        , retries=3
+        , retry_delay=60
     )
 
     gsheet_to_bq_raw_data = PythonOperator(
         task_id='gsheet_to_bq_raw_data'
         , python_callable=_gsheet_to_bq_raw_data
+        , retries=3
+        , retry_delay=60
     )
 
     get_dag_details >> gsheet_sensor >> gsheet_to_bq_raw_data

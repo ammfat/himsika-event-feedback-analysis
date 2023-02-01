@@ -150,6 +150,7 @@ with DAG(
         , schedule_interval='0 3 * * 1' # every monday at 3am
         , start_date=datetime(2022, 6, 1)
         , end_date=datetime(2022, 11, 1)
+        , description='Load Event Feedback Google Sheet to BigQuery'
     ) as dag:
 
     get_dag_details= PythonOperator(

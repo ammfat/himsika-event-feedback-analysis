@@ -1,6 +1,5 @@
 import os
 import google.auth
-import json
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
@@ -18,7 +17,7 @@ args = {
     'owner': 'ammfat',
 }
 
-bq_raw_data_dataset = 'event_feedback'
+bq_raw_data_dataset = 'raw_data_experiment'
 
 # DAG
 
@@ -29,7 +28,7 @@ def _get_dag_details(**kwargs):
         , 'exec_timestamp': kwargs.get('ts')
     }
 
-def _gsheet_sensor(**kwargs):
+def _gsheet_sensor(ti, **kwargs):
     from googleapiclient.discovery import build
 
     gdrive_service = build('drive', 'v3', credentials=CREDENTIALS)
@@ -38,8 +37,6 @@ def _gsheet_sensor(**kwargs):
     search_end_date = datetime.strptime(kwargs.get('ts'), '%Y-%m-%dT%H:%M:%S%z')
     search_start_date = search_start_date.strftime('%Y-%m-%dT%H:%M:%S')
     search_end_date = search_end_date.strftime('%Y-%m-%dT%H:%M:%S')
-
-    print(f"gsheet_sensor: { search_start_date } - { search_end_date }")
 
     tmp_sheets = []
     pageToken = ""
@@ -60,26 +57,83 @@ def _gsheet_sensor(**kwargs):
         pageToken = response.get('nextPageToken')
 
     sheets = [sheet for sheet in tmp_sheets if not sheet['owners'][0]['me']]
+    
+    ti.xcom_push(key='date', value=[search_start_date, search_end_date])
+    ti.xcom_push(key='sheets', value=sheets)
 
-    if sheets:
-        for sheet in sheets:
-            print(sheet['id'].ljust(45), sheet['createdTime'].ljust(25), sheet['name'])
+def _gsheet_to_bq_raw_data(ti, **kwargs):
+    import gspread
+    import pandas as pd
+    from google.cloud import bigquery
+
+    date = ti.xcom_pull(key='date', task_ids='gsheet_sensor')
+    sheets = ti.xcom_pull(key='sheets', task_ids='gsheet_sensor')
+
+    print('Date Range: ', date[0], ' - ', date[1])
+    for sheet in sheets:
+        print(sheet['id'].ljust(45), sheet['createdTime'].ljust(25), sheet['name'])
+
+    events = [
+        sheet['name'].replace('Feedback ', '')
+                .replace('(Jawaban)', '')
+                .replace('(Responses)', '')
+                .replace('(OFFLINE)', '')
+                .strip()
+        for sheet in sheets
+    ]
+
+    dfs = []
+
+    for sheet in sheets:
+        gsheet = gspread.Client(auth=CREDENTIALS).open_by_key(sheet['id'])
+        worksheet = gsheet.sheet1
+
+        dfs.append(
+            pd.DataFrame(worksheet.get_all_records())
+            .astype({'Timestamp': 'datetime64'})
+            .reset_index(drop=True)
+        )
+
+    bq_client = bigquery.Client(credentials=CREDENTIALS, project=PROJECT_ID)
+
+    with bq_client:
+        import json
         
-        return True
-    else:
-        print('No sheets found.')
-        return False
+        for df, event in zip(dfs, events):
+            table_name = event.lower()\
+                        .replace(' -', '')\
+                        .replace('/', '_')\
+                        .replace(' ', '_')
 
-    # return True
+            table_id = f'{bq_raw_data_dataset}.{table_name}'
 
-def _gsheet_to_bq_raw_data():
-    return True
+            df['Load Date'] = date[1]
+            df.columns = df.columns.str.replace('[^A-Za-z0-9\s]+', '').str.lower().str.replace(' ', '_')
+
+            try:
+                df = df.drop(columns='')
+            except:
+                pass
+
+            df_json_data = df.to_json(orient='records')
+            df_json_object = json.loads(df_json_data)
+
+            job_config = bigquery.LoadJobConfig(
+                autodetect=True
+                , source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON
+                , write_disposition="WRITE_TRUNCATE"
+            )
+
+            job = bq_client.load_table_from_json(df_json_object, table_id, job_config=job_config)
+            job.result()
+
+            print('Table {} successfully loaded.'.format(table_id))
 
 
 with DAG(
         dag_id='gsheet_to_bq_raw'
         , default_args=args
-        , schedule_interval='0 3 * * 1'
+        , schedule_interval='0 3 * * 1' # every monday at 3am
         , start_date=datetime(2022, 6, 1)
         , end_date=datetime(2022, 11, 1)
     ) as dag:

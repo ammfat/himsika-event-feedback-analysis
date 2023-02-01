@@ -2,7 +2,7 @@
 
 End-to-end [E]vent [F]eedback [A]nalytical systems from data pipeline, warehouse, to visualization dashboard.
 
-An initiative to shape data-driven culture at the Association of Information System Students of Unsika ([Himsika](https://himsika.unsika.ac.id)).
+An initiative project to build data-driven culture at the Association of Information System Students of Unsika ([Himsika](https://himsika.unsika.ac.id)).
 
 ---
 

@@ -69,10 +69,12 @@ def _gsheet_to_bq_raw_data(ti, **kwargs):
     for sheet in sheets:
         print(sheet['id'].ljust(45), sheet['createdTime'].ljust(25), sheet['name'])
 
-    """ If len sheets = 0,
-    then mark tasks as success 
+    """ If len sheets = 0, then mark tasks as success 
     else, continue to load data to BQ """
+    if len(sheets) == 0:
+        return
 
+    import json
     import gspread
     import pandas as pd
     from google.cloud import bigquery
@@ -81,12 +83,11 @@ def _gsheet_to_bq_raw_data(ti, **kwargs):
         sheet['name'].replace('Feedback ', '')
                 .replace('(Jawaban)', '')
                 .replace('(Responses)', '')
-                .replace('(OFFLINE)', '')
                 .strip()
         for sheet in sheets
     ]
 
-    dfs = []
+    dfs, df_json_objects = [], []
 
     for sheet in sheets:
         gsheet = gspread.Client(auth=CREDENTIALS).open_by_key(sheet['id'])
@@ -103,15 +104,18 @@ def _gsheet_to_bq_raw_data(ti, **kwargs):
         except:
             pass
 
+        df_json_data = df.to_json(orient='records')
+        df_json_object = json.loads(df_json_data)
+
         dfs.append(df)
+        df_json_objects.append(df_json_object)
 
     bq_client = bigquery.Client(credentials=CREDENTIALS, project=PROJECT_ID)
 
     with bq_client:
-        import json
         from time import sleep
         
-        for df, event in zip(dfs, events):
+        for df_json_object, event in zip(df_json_objects, events):
             table_name = event.lower()\
                         .replace(' -', '')\
                         .replace('\'', '')\
@@ -121,9 +125,6 @@ def _gsheet_to_bq_raw_data(ti, **kwargs):
                         .replace(' ', '_')
 
             table_id = f'{bq_raw_data_dataset}.{table_name}'
-
-            df_json_data = df.to_json(orient='records')
-            df_json_object = json.loads(df_json_data)
 
             job_config = bigquery.LoadJobConfig(
                 autodetect=True

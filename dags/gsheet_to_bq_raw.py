@@ -132,14 +132,14 @@ def _gsheet_to_bq_raw_data(ti, **kwargs):
                 , write_disposition="WRITE_TRUNCATE"
             )
 
+            job = bq_client.load_table_from_json(df_json_object, table_id, job_config=job_config)
+            
             try:
-                job = bq_client.load_table_from_json(df_json_object, table_id, job_config=job_config)
                 job.result()
             except Exception as e:
                 print(e)
 
                 sleep(120)
-                job = bq_client.load_table_from_json(df_json_object, table_id, job_config=job_config)
                 job.result()                
 
             print('Table {} successfully loaded.'.format(table_id))

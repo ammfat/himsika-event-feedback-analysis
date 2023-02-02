@@ -92,11 +92,18 @@ def _gsheet_to_bq_raw_data(ti, **kwargs):
         gsheet = gspread.Client(auth=CREDENTIALS).open_by_key(sheet['id'])
         worksheet = gsheet.sheet1
 
-        dfs.append(
-            pd.DataFrame(worksheet.get_all_records())
-            .astype({'Timestamp': 'datetime64'})
-            .reset_index(drop=True)
-        )
+        df = pd.DataFrame(worksheet.get_all_records()).reset_index(drop=True)
+
+        df['Load Date'] = date[1]
+        df['Timestamp'] = df['Timestamp'].astype('datetime64').astype('str').str.replace(' ', 'T')
+        df.columns = df.columns.str.replace('[^A-Za-z0-9\s]+', '').str.lower().str.replace(' ', '_')
+
+        try:
+            df = df.drop(columns='')
+        except:
+            pass
+
+        dfs.append(df)
 
     bq_client = bigquery.Client(credentials=CREDENTIALS, project=PROJECT_ID)
 
@@ -115,14 +122,6 @@ def _gsheet_to_bq_raw_data(ti, **kwargs):
 
             table_id = f'{bq_raw_data_dataset}.{table_name}'
 
-            df['Load Date'] = date[1]
-            df.columns = df.columns.str.replace('[^A-Za-z0-9\s]+', '').str.lower().str.replace(' ', '_')
-
-            try:
-                df = df.drop(columns='')
-            except:
-                pass
-
             df_json_data = df.to_json(orient='records')
             df_json_object = json.loads(df_json_data)
 
@@ -133,7 +132,7 @@ def _gsheet_to_bq_raw_data(ti, **kwargs):
             )
 
             job = bq_client.load_table_from_json(df_json_object, table_id, job_config=job_config)
-            
+
             try:
                 job.result()
             except Exception as e:
@@ -142,7 +141,7 @@ def _gsheet_to_bq_raw_data(ti, **kwargs):
                 sleep(120)
                 job.result()                
 
-            print('Table {} successfully loaded.'.format(table_id))
+            print('Table {} successfully loaded.'.format(table_id))            
 
 with DAG(
         dag_id='gsheet_to_bq_raw'
@@ -150,7 +149,7 @@ with DAG(
         , schedule_interval='0 3 * * 1' # every monday at 3am
         , start_date=datetime(2022, 6, 1)
         , end_date=datetime(2022, 11, 1)
-        , description='Load Event Feedback Google Sheet to BigQuery'
+        , description='Load event feedback data from Google Sheet to BigQuery'
     ) as dag:
 
     get_dag_details= PythonOperator(

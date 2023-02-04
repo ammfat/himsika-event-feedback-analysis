@@ -61,7 +61,7 @@ def _gsheet_sensor(ti, **kwargs):
     ti.xcom_push(key='date', value=[search_start_date, search_end_date])
     ti.xcom_push(key='sheets', value=sheets)
 
-def _gsheet_to_bq_raw_data(ti, **kwargs):
+def _gsheet_to_pandas(ti, **kwargs):
     date = ti.xcom_pull(key='date', task_ids='gsheet_sensor')
     sheets = ti.xcom_pull(key='sheets', task_ids='gsheet_sensor')
 
@@ -72,12 +72,11 @@ def _gsheet_to_bq_raw_data(ti, **kwargs):
     """ If len sheets = 0, then mark tasks as success 
     else, continue to load data to BQ """
     if len(sheets) == 0:
-        return
+        return 'No sheets found.'
 
     import json
     import gspread
     import pandas as pd
-    from google.cloud import bigquery
 
     events = [
         sheet['name'].replace('Feedback ', '')
@@ -110,6 +109,20 @@ def _gsheet_to_bq_raw_data(ti, **kwargs):
         dfs.append(df)
         df_json_objects.append(df_json_object)
 
+    ti.xcom_push(key='data', value=[df_json_objects, events])
+
+def _pandas_to_bq_raw_data(ti, **kwargs):
+    date = ti.xcom_pull(key='date', task_ids='gsheet_sensor')
+    sheets = ti.xcom_pull(key='sheets', task_ids='gsheet_sensor')
+
+    print('Date Range: ', date[0], ' - ', date[1])
+    
+    if len(sheets) == 0:
+        return 'No sheets found.'
+
+    from google.cloud import bigquery
+
+    df_json_objects, events = ti.xcom_pull(key='data', task_ids='gsheet_to_pandas')
     bq_client = bigquery.Client(credentials=CREDENTIALS, project=PROJECT_ID)
 
     with bq_client:
@@ -165,14 +178,21 @@ with DAG(
         , retry_delay=60
     )
 
-    gsheet_to_bq_raw_data = PythonOperator(
-        task_id='gsheet_to_bq_raw_data'
-        , python_callable=_gsheet_to_bq_raw_data
+    gsheet_to_pandas = PythonOperator(
+        task_id='gsheet_to_pandas'
+        , python_callable=_gsheet_to_pandas
         , retries=3
         , retry_delay=60
     )
 
-    get_dag_details >> gsheet_sensor >> gsheet_to_bq_raw_data
+    pandas_to_bq_raw_data = PythonOperator(
+        task_id='pandas_to_bq_raw_data'
+        , python_callable=_pandas_to_bq_raw_data
+        , retries=3
+        , retry_delay=60
+    )
+
+    get_dag_details >> gsheet_sensor >> gsheet_to_pandas >> pandas_to_bq_raw_data
 
 if __name__ == '__main__':
     dag.cli()

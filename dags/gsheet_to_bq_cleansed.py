@@ -32,15 +32,16 @@ with DAG(
         dag_id='gsheet_to_bq_cleansed'
         , default_args=args
         , schedule_interval='0 5 * * *'
-        , start_date=datetime.datetime(2021, 1, 1)
-        , catchup=False
+        , start_date=datetime.datetime(2022, 6, 1)
+        , end_date=datetime.datetime(2022, 11, 1)
+        , description='Transform-Load event feedback data from Google Sheet to BigQuery'
     ) as dag:
 
     get_dag_details = PythonOperator(
         task_id='get_dag_details',
         python_callable=_get_dag_details
     )
-    
+
     print_dag_details
 
 if __name__ == '__main__':

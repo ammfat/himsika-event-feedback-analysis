@@ -29,7 +29,11 @@ def _get_dag_details(**kwargs):
     }
 
 def _event_data_sensor(ti, **kwargs):
+    search_start_date = kwargs.get('ts') - timedelta(days=7)
+    search_end_date = kwargs.get('ts')    
     sheets = ti.xcom_pull(dag_id='gsheet_to_bq_raw', task_ids='gsheet_sensor', key='sheets')
+
+    print("Date Range: ", search_start_date, " - ", search_end_date)
 
     if not sheets:
         return "No sheets to process"

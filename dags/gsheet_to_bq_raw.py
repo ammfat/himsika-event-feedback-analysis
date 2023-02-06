@@ -166,7 +166,7 @@ with DAG(
         , description='Load event feedback data from Google Sheet to BigQuery'
     ) as dag:
 
-    get_dag_details= PythonOperator(
+    get_dag_details = PythonOperator(
         task_id='get_dag_details'
         , python_callable=_get_dag_details
     )

@@ -27,7 +27,16 @@ def _get_dag_details(**kwargs):
         , 'bq_cleased_dataset_name': bq_cleased_dataset_name
         , 'exec_timestamp': kwargs.get('ts')
     }
-    
+
+def _event_data_sensor(ti, **kwargs):
+    sheets = ti.xcom_pull(dag_id='gsheet_to_bq_raw', task_ids='gsheet_sensor', key='sheets')
+
+    if not sheets:
+        return "No sheets to process"
+
+    return sheets
+
+
 with DAG(
         dag_id='gsheet_to_bq_cleansed'
         , default_args=args
@@ -42,7 +51,12 @@ with DAG(
         python_callable=_get_dag_details
     )
 
-    print_dag_details
+    event_data_sensor = PythonOperator(
+        task_id='event_data_sensor',
+        python_callable=_event_data_sensor,
+    )
+
+    print_dag_details >> event_data_sensor
 
 if __name__ == '__main__':
     dag.cli()

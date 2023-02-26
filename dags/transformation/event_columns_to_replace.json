@@ -1,0 +1,63 @@
+{
+    "Email Address": "Email",
+    "Nama Lengkap Peserta": "Nama Lengkap",
+    "Nama Peserta": "Nama Lengkap",
+    "Nama Lengkap (keperluan sertifikat)": "Nama Lengkap",
+    "Asal Instansi": "Instansi",
+    "Jenis Pekerjaan": "Pekerjaan",
+    "Nama Karya Pameran": "Nama Karya",
+
+    "Bagaimana Materi yang disampaikan?": "Tingkat Kemenarikan Topik",
+    "Seberapa menarik topik yang diangkat pada TALKSHOW SILOGY FEST  ini menurut anda?": "Tingkat Kemenarikan Topik",
+    "Seberapa menarik topik yang diangkat pada Workshop PBB - UI/UX ini menurut anda?": "Tingkat Kemenarikan Topik",
+    "Seberapa menarik topik yang diangkat pada Workshop PBB - Python ini menurut anda?": "Tingkat Kemenarikan Topik",
+    "Seberapa menarik topik yang diangkat pada webinar ini menurut anda?": "Tingkat Kemenarikan Topik",
+
+    "Bagaimana Materi yang Disampaikan?": "Kepuasan terhadap Pemateri",
+    "Tingkat Kepuasan Peserta Terhadap Penyampaian Materi Acara Oleh Narasumber": "Kepuasan terhadap Pemateri",
+    "Tingkat Penyampaian Materi Oleh Pemateri": "Kepuasan terhadap Pemateri",
+    "Bagaimana dengan pematerinya?": "Kepuasan terhadap Pemateri",
+    "Performa Pemateri dalam menyampaikan materi": "Kepuasan terhadap Pemateri",
+
+    "Penilaian Anda Terhadap Manajemen/Pengelolaan Acara": "Kepuasan terhadap Manajemen",
+    "Tingkat Kepuasan Peserta Terhadap Manajemen Acara": "Kepuasan terhadap Manajemen",
+    "Tingkat Manajemen Acara": "Kepuasan terhadap Manajemen",
+    "Tingkat Penilaian Terhadap Manajemen/Pengelolaan Acara": "Kepuasan terhadap Manajemen",
+    "Secara umum, apakah anda puas dengan pelaksanaan TALKSHOW SILOGY FEST ini?": "Kepuasan terhadap Manajemen",
+    "Secara umum, apakah anda puas dengan pelaksanaan Workshop PBB - Python ini?": "Kepuasan terhadap Manajemen",
+    "Secara umum, apakah anda puas dengan pelaksanaan Workshop PBB - UI/UX ini?": "Kepuasan terhadap Manajemen",
+    "Secara umum, apakah anda puas dengan pelaksanaan webinar ini?": "Kepuasan terhadap Manajemen",
+
+    "Tingkat Kepuasan Anda Terhadap Acara": "Kepuasan terhadap Keseluruhan Acara",
+    "Tingkat Kepuasan Peserta Terhadap Keseluruhan Acara": "Kepuasan terhadap Keseluruhan Acara",
+    "Tingkat Kepuasan Acara": "Kepuasan terhadap Keseluruhan Acara",
+    "Tingkat Kepuasan Terhadap Acara": "Kepuasan terhadap Keseluruhan Acara",
+    "Secara umum, bagaimana penilaian anda tentang TALKSHOW SILOGY FEST ini?": "Kepuasan terhadap Keseluruhan Acara",
+    "Secara umum, bagaimana penilaian anda tentang webinar ini?": "Kepuasan terhadap Keseluruhan Acara",
+    "Secara umum, bagaimana penilaian anda tentang Workshop PBB - UI/UX ini?": "Kepuasan terhadap Keseluruhan Acara",
+    "Secara umum, bagaimana penilaian anda tentang Workshop PBB - Python ini?": "Kepuasan terhadap Keseluruhan Acara",
+    
+    "Performa MC dalam membawakan Workshop PBB - Python": "Performa MC",
+    "Performa MC dalam membawakan webinar": "Performa MC",
+    "Performa MC dalam membawakan TALKSHOW SILOGY FEST": "Performa MC",
+    "Performa MC dalam membawakan Workshop PBB - UI/UX": "Performa MC",
+    "Performa Moderator dalam memandu acara dengan narasumber": "Performa Moderator",
+    "Performa moderator dalam memandu acara dengan narasumber": "Performa Moderator",
+
+    "Bagaimana Penilaian anda tentang durasi webinar ini?": "Kepuasan terhadap Durasi",
+    "Bagaimana Penilaian anda tentang durasi Workshop PBB - Python ini?": "Kepuasan terhadap Durasi",
+    "Bagaimana Penilaian anda tentang durasi TALKSHOW SILOGY FEST ini?": "Kepuasan terhadap Durasi",
+    "Bagaimana Penilaian anda tentang durasi Workshop PBB - UI/UX ini?": "Kepuasan terhadap Durasi",
+
+    "Apakah dimasa mendatang anda ingin mengikuti TALKSHOW SILOGY FEST yang diadakan oleh kami lagi?": "Keikutsertaan Lanjutan",
+    "Apakah dimasa mendatang anda ingin mengikuti Workshop PBB - Python yang diadakan oleh kami lagi?": "Keikutsertaan Lanjutan",
+    "Apakah dimasa mendatang anda ingin mengikuti Workshop PBB - UI/UX yang diadakan oleh kami lagi?": "Keikutsertaan Lanjutan",
+    "Apakah dimasa mendatang anda ingin mengikuti webinar yang diadakan oleh kami lagi?": "Keikutsertaan Lanjutan",
+
+    "Kritik dan Saran Anda": "Kritik dan Saran",
+    "Silakan tulis saran, kritik, serta masukan untuk kami berkembang lebih baik": "Kritik dan Saran",
+    "Saran dan Kritik": "Kritik dan Saran",
+    "Kritik dan Saran Acara": "Kritik dan Saran",
+    "Saran dan kritik untuk webinar ini": "Kritik dan Saran",
+    "Saran dan kritik untuk Talkshow ini": "Kritik dan Saran"
+}

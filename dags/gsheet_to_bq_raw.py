@@ -213,8 +213,8 @@ with DAG(
         # , retry_delay=60
     )
 
-    get_dag_details >> gsheet_sensor >> gsheet_to_json_object >> task_resume_decision_maker
-    task_resume_decision_maker >> [json_object_to_bq_raw_data, event_header_transformer]
+    get_dag_details >> gsheet_sensor >> task_resume_decision_maker >> gsheet_to_json_object
+    gsheet_to_json_object >> [json_object_to_bq_raw_data, event_header_transformer]
     event_header_transformer >> event_data_transformer
 
 if __name__ == '__main__':

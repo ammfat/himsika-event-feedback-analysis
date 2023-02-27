@@ -6,8 +6,8 @@ from airflow.exceptions import AirflowSkipException
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
 
-from transformation.transformers import _event_column_transformer_for_bq
-from transformation.transformers import _event_header_transformer, _event_data_transformer
+from transformation.transformers import column_transformer_for_bq
+from transformation.transformers import _transformer_header, _transformer_hide_pii, _transformer_data_enrichment, _transformer_data_cleansing
 
 # SETUP CREDENTIALS
 
@@ -126,7 +126,7 @@ def _json_object_to_bq_raw_data(ti, **kwargs):
         from time import sleep
         
         for df_json_object, event in zip(df_json_objects, events):
-            df_json_object = _event_column_transformer_for_bq(df_json_object)
+            df_json_object = column_transformer_for_bq(df_json_object)
 
             table_name = event.lower()\
                         .replace(' -', '')\
@@ -156,6 +156,27 @@ def _json_object_to_bq_raw_data(ti, **kwargs):
 
             print('Table {} successfully loaded.'.format(table_id))            
 
+def _event_data_cleansed_to_json_object(ti, **kwargs):
+    import json
+    import pandas as pd
+
+    df, events = ti.xcom_pull(key='event_data_cleansed', task_ids='transformer_data_cleansing')
+    df = pd.DataFrame(df)
+
+    # Split dataframe into list of dataframes based on event
+    dfs = [
+        df.loc[df['Event'] == event]
+            .dropna(axis=1, how='all')
+            .dropna(axis=0, how='all')
+        for event in events
+    ]
+
+    df_json_objects = [df.to_json(orient='records') for df in dfs]
+
+    print('Event Data Cleansed to JSON Object')
+    print(df_json_objects)
+
+    return 'event_data_cleansed_to_json_object'
 
 with DAG(
         dag_id='gsheet_to_bq_raw'
@@ -199,23 +220,45 @@ with DAG(
         , retry_delay=60
     )
 
-    event_header_transformer = PythonOperator(
-        task_id='event_header_transformer'
-        , python_callable=_event_header_transformer
+    transformer_header = PythonOperator(
+        task_id='transformer_header'
+        , python_callable=_transformer_header
         # , retries=3
         # , retry_delay=60
     )
 
-    event_data_transformer = PythonOperator(
-        task_id='event_data_transformer'
-        , python_callable=_event_data_transformer
+    transformer_data_enrichment = PythonOperator(
+        task_id='transformer_data_enrichment'
+        , python_callable=_transformer_data_enrichment
+        # , retries=3
+        # , retry_delay=60
+    )
+
+    transformer_hide_pii = PythonOperator(
+        task_id='transformer_hide_pii'
+        , python_callable=_transformer_hide_pii
+        # , retries=3
+        # , retry_delay=60
+    )
+
+    transformer_data_cleansing = PythonOperator(
+        task_id='transformer_data_cleansing'
+        , python_callable=_transformer_data_cleansing
+        # , retries=3
+        # , retry_delay=60
+    )
+
+    event_data_cleansed_to_json_object = PythonOperator(
+        task_id='event_data_cleansed_to_json_object'
+        , python_callable=_event_data_cleansed_to_json_object
         # , retries=3
         # , retry_delay=60
     )
 
     get_dag_details >> gsheet_sensor >> task_resume_decision_maker >> gsheet_to_json_object
-    gsheet_to_json_object >> [json_object_to_bq_raw_data, event_header_transformer]
-    event_header_transformer >> event_data_transformer
+    gsheet_to_json_object >> [json_object_to_bq_raw_data, transformer_header]
+    transformer_header >> transformer_data_enrichment >> transformer_hide_pii
+    transformer_hide_pii >> transformer_data_cleansing >> event_data_cleansed_to_json_object
 
 if __name__ == '__main__':
     dag.cli()

@@ -65,10 +65,10 @@ def _transformer_data_enrichment(ti, **kwargs):
         """ Get email domain, if KeyError create a new column with NaN """
         try:
             df['Email Domain'] = df['Email'].apply(
-                lambda x: str(x).split('@')[-1] if not pd.isna(x) else np.NaN
+                lambda x: str(x).split('@')[-1] if not pd.isna(x) else "NA"
             )
         except KeyError:
-            df['Email Domain'] = np.NaN
+            df['Email Domain'] = "NA"
         
         return df
     
@@ -76,10 +76,10 @@ def _transformer_data_enrichment(ti, **kwargs):
         """Get student year, if KeyError create a new column with NaN"""
         try:
             df['Tahun Angkatan Peserta'] = df['NPM'].apply(
-                lambda x: str(x)[:2] if not pd.isna(x) else np.NaN
+                lambda x: str(x)[:2] if not pd.isna(x) else "0"
             )
         except KeyError:
-            df['Tahun Angkatan Peserta'] = np.NaN
+            df['Tahun Angkatan Peserta'] = "0"
         
         return df
 
@@ -106,10 +106,10 @@ def _transformer_hide_pii(ti, **kwargs):
         """ Hide student ID (NPM), if KeyError create a new column with NaN """
         try:
             df['NPM'] = df['NPM'].apply(
-                lambda x: str(x)[:2] + '*' * (len(str(x)) - 3) + str(x)[-1] if not pd.isna(x) else np.NaN
+                lambda x: str(x)[:2] + '*' * (len(str(x)) - 3) + str(x)[-1] if not pd.isna(x) else "0"
             )
         except KeyError:
-            df['NPM'] = np.NaN
+            df['NPM'] = "0"
 
         return df
 
@@ -117,10 +117,10 @@ def _transformer_hide_pii(ti, **kwargs):
         """ Hide student name, if KeyError create a new column with NaN"""
         try:
             df['Nama Lengkap'] = df['Nama Lengkap'].apply(
-                lambda x: str(x)[0] + '*' * (len(str(x)) - 2) + str(x)[-1] if not pd.isna(x) else np.NaN
+                lambda x: str(x)[0] + '*' * (len(str(x)) - 2) + str(x)[-1] if not pd.isna(x) else "NA"
             )
         except KeyError:
-            df['Nama Lengkap'] = np.NaN
+            df['Nama Lengkap'] = "NA"
 
         return df
 
@@ -130,10 +130,10 @@ def _transformer_hide_pii(ti, **kwargs):
             df['Email'] = df['Email'].apply(
                 lambda x: str(x).split('@')[0][0]
                 + '*' * (len(str(x).split('@')[0]) - 2) 
-                + str(x).split('@')[0][-1] if not pd.isna(x) else np.NaN
+                + str(x).split('@')[0][-1] if not pd.isna(x) else "NA"
             )
         except KeyError:
-            df['Email'] = np.NaN
+            df['Email'] = "NA"
 
         return df
 
@@ -162,10 +162,10 @@ def _transformer_data_cleansing(ti, **kwargs):
         pass
     
     # Events
-    try:
-        df['Event'] = df['Event'].replace(regex={r'.*OFFLINE.*': 'Talkshow Silogy Fest'})
-    except KeyError:
-        df['Event'] = np.NaN
+    # try:
+    #     df['Event'] = df['Event'].replace(regex={r'.*OFFLINE.*': 'Talkshow Silogy Fest'})
+    # except KeyError:
+    #     df['Event'] = "NA"
 
     # Pekerjaan
     try:
@@ -175,7 +175,7 @@ def _transformer_data_cleansing(ti, **kwargs):
             , 'Lainnya': 'Umum'
         })
     except KeyError:
-        df['Pekerjaan'] = np.NaN
+        df['Pekerjaan'] = "NA"
 
     # Program Studi
 
@@ -192,7 +192,7 @@ def _transformer_data_cleansing(ti, **kwargs):
                 r'.*siste(m?) infor(a?)ma(s?)i$|teknik informasi|ti': 'teknik informatika'
                 , r'.*te[kh]nik inf(or|ro)matika$': 'teknik informatika'
                 , r'.*teknik (elektro$|elektro.*(\d$))': 'teknik elektro'
-                , r'^\s*$|^unsika$': np.NaN
+                , r'^\s*$|^unsika$': "NA"
                 , r's1 pendidikan agama islam': 'pendidikan agama islam'
                 , r'informatika komputer': 'informatics computer'
                 , r'rpl': 'rekayasa perangkat lunak'
@@ -203,7 +203,7 @@ def _transformer_data_cleansing(ti, **kwargs):
             }
         ).str.title()
     except KeyError:
-        df['Program Studi'] = np.NaN
+        df['Program Studi'] = "NA"
 
     # Instansi
 
@@ -216,7 +216,7 @@ def _transformer_data_cleansing(ti, **kwargs):
 
         ## Replace abbreviations
         df['Instansi'] = df['Instansi'].apply(
-            lambda x: np.NaN if x is np.NaN else x.replace('univ ', 'universitas ')
+            lambda x: "NA" if type(x) is not 'str' else x.replace('univ ', 'universitas ')
         )
 
         df['Instansi'] = df['Instansi'].replace(regex={
@@ -236,15 +236,15 @@ def _transformer_data_cleansing(ti, **kwargs):
             r'ubsi': 'universitas bina sarana informatika',
             r'upi': 'universitas pendidikan indonesia',
             r'smk n 7 semarang': 'SMKN 7 Semarang',
-            r'^\s*$|mahasiswa|umum|tidak bekerja|programmer beginner|payment gateway|informatika|sistem informasi|karawang': np.NaN
+            r'^\s*$|mahasiswa|umum|tidak bekerja|programmer beginner|payment gateway|informatika|sistem informasi|karawang': "NA"
         })
 
         ## Change case to title and upper for abbreviations
         df['Instansi'] = df['Instansi'].str.title()
 
         def to_approriate_case(x):
-            if x is np.NaN:
-                return np.NaN
+            if x is "NA":
+                return "NA"
 
             tmp = x.split(' ')
             
@@ -261,7 +261,7 @@ def _transformer_data_cleansing(ti, **kwargs):
 
         df['Instansi'] = df['Instansi'].apply(lambda x: to_approriate_case(x))
     except KeyError:
-        df['Instansi'] = np.NaN
+        df['Instansi'] = "NA"
 
     df_dict = df.to_dict('records')
     events = df['Event'].unique().tolist()

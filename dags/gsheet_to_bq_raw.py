@@ -22,6 +22,7 @@ args = {
 }
 
 bq_raw_data_dataset = 'raw_data_experiment'
+bq_event_feedback_dataset = 'event_feedback_experiment'
 
 # DAG
 
@@ -29,6 +30,7 @@ def _get_dag_details(**kwargs):
     return {
         'project_id': PROJECT_ID
         , 'bq_raw_data_dataset': bq_raw_data_dataset
+        , 'bq_event_feedback_dataset': bq_event_feedback_dataset
         , 'exec_timestamp': kwargs.get('ts')
     }
 
@@ -116,10 +118,14 @@ def _gsheet_to_json_object(ti, **kwargs):
 
     ti.xcom_push(key='data', value=[df_json_objects, events])
 
-def _json_object_to_bq_raw_data(ti, **kwargs):
+def _json_object_to_bq_table(ti, **kwargs):
     from google.cloud import bigquery
 
-    df_json_objects, events = ti.xcom_pull(key='data', task_ids='gsheet_to_json_object')
+    key = kwargs.get('key')
+    task_id = kwargs.get('task_id')
+    bq_dataset_name = kwargs.get('bq_dataset_name')
+
+    df_json_objects, events = ti.xcom_pull(key=key, task_ids=task_id)
     bq_client = bigquery.Client(credentials=CREDENTIALS, project=PROJECT_ID)
 
     with bq_client:
@@ -136,7 +142,7 @@ def _json_object_to_bq_raw_data(ti, **kwargs):
                         .replace(')', '')\
                         .replace(' ', '_')
 
-            table_id = f'{bq_raw_data_dataset}.{table_name}'
+            table_id = f'{bq_dataset_name}.{table_name}'
 
             job_config = bigquery.LoadJobConfig(
                 autodetect=True
@@ -171,10 +177,15 @@ def _event_data_cleansed_to_json_object(ti, **kwargs):
         for event in events
     ]
 
-    df_json_objects = [df.to_json(orient='records') for df in dfs]
+    df_json_objects = []
 
-    print('Event Data Cleansed to JSON Object')
-    print(df_json_objects)
+    for df in dfs:
+        df_json_data = df.to_json(orient='records')
+        df_json_object = json.loads(df_json_data)
+
+        df_json_objects.append(df_json_object)
+
+    ti.xcom_push(key='data_cleansed', value=[df_json_objects, events])    
 
     return 'event_data_cleansed_to_json_object'
 
@@ -182,8 +193,8 @@ with DAG(
         dag_id='gsheet_to_bq_raw'
         , default_args=args
         , schedule_interval='0 3 * * 1' # every monday at 3am
-        , start_date=datetime(2022, 6, 1)
-        , end_date=datetime(2022, 8, 1)
+        , start_date=datetime(2022, 10, 1)
+        , end_date=datetime(2022, 11, 1)
         , description='Load event feedback data from Google Sheet to BigQuery'
     ) as dag:
 
@@ -215,7 +226,12 @@ with DAG(
 
     json_object_to_bq_raw_data = PythonOperator(
         task_id='json_object_to_bq_raw_data'
-        , python_callable=_json_object_to_bq_raw_data
+        , python_callable=_json_object_to_bq_table
+        , op_kwargs={
+            'key': 'data'
+            , 'task_id': 'gsheet_to_json_object'
+            , 'bq_dataset_name': bq_raw_data_dataset
+        }
         , retries=3
         , retry_delay=60
     )
@@ -255,10 +271,23 @@ with DAG(
         # , retry_delay=60
     )
 
+    json_object_to_bq_event_feedback = PythonOperator(
+        task_id='json_object_to_bq_event_feedback'
+        , python_callable=_json_object_to_bq_table
+        , op_kwargs={
+            'key': 'data_cleansed'
+            , 'task_id': 'event_data_cleansed_to_json_object'
+            , 'bq_dataset_name': bq_event_feedback_dataset
+        }
+        # , retries=3
+        # , retry_delay=60
+    )
+
     get_dag_details >> gsheet_sensor >> task_resume_decision_maker >> gsheet_to_json_object
     gsheet_to_json_object >> [json_object_to_bq_raw_data, transformer_header]
     transformer_header >> transformer_data_enrichment >> transformer_hide_pii
     transformer_hide_pii >> transformer_data_cleansing >> event_data_cleansed_to_json_object
+    event_data_cleansed_to_json_object >> json_object_to_bq_event_feedback
 
 if __name__ == '__main__':
     dag.cli()

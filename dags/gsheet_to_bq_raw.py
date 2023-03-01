@@ -7,7 +7,8 @@ from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
 
 from transformation.transformers import column_transformer_for_bq
-from transformation.transformers import _transformer_header, _transformer_hide_pii, _transformer_data_enrichment, _transformer_data_cleansing
+from transformation.transformers import _transformer_header, _transformer_hide_pii
+from transformation.transformers import _transformer_data_enrichment, _transformer_data_cleansing
 
 # SETUP CREDENTIALS
 
@@ -52,8 +53,8 @@ def _gsheet_sensor(ti, **kwargs):
             q=f"""
                 mimeType='application/vnd.google-apps.spreadsheet'
                 and not name contains 'output'
-                and createdTime >= '{ search_start_date }'
-                and createdTime <= '{ search_end_date }'
+                and modifiedTime >= '{ search_start_date }'
+                and modifiedTime <= '{ search_end_date }'
             """
             , fields="nextPageToken, files(id, name, owners, createdTime, modifiedTime)"
         ).execute()
@@ -77,7 +78,7 @@ def _task_resume_decision_maker(ti, **kwargs):
         raise AirflowSkipException
 
     for sheet in sheets:
-        print(sheet['id'].ljust(45), sheet['createdTime'].ljust(25), sheet['name'])
+        print(sheet['id'].ljust(45), sheet['modifiedTime'].ljust(25), sheet['name'])
 
 def _gsheet_to_json_object(ti, **kwargs):
     import json
@@ -103,8 +104,9 @@ def _gsheet_to_json_object(ti, **kwargs):
 
         df = pd.DataFrame(worksheet.get_all_records()).reset_index(drop=True)
 
-        df['Load Date'] = date[1]
+        df['Load Timestamp'] = date[1]
         df['Timestamp'] = df['Timestamp'].astype('datetime64').astype('str').str.replace(' ', 'T')
+        df['Date'] = df['Timestamp'].str.split('T').str[0]
 
         try:
             df = df.drop(columns='')
@@ -147,6 +149,10 @@ def _json_object_to_bq_table(ti, **kwargs):
             job_config = bigquery.LoadJobConfig(
                 autodetect=True
                 , source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON
+                , time_partitioning=bigquery.TimePartitioning(
+                    type_=bigquery.TimePartitioningType.DAY
+                    , field='date'
+                )
                 , write_disposition="WRITE_TRUNCATE"
             )
 
@@ -194,7 +200,7 @@ with DAG(
         , default_args=args
         , schedule_interval='0 3 * * 1' # every monday at 3am
         , start_date=datetime(2022, 10, 1)
-        , end_date=datetime(2022, 11, 1)
+        # , end_date=datetime(2023, 2, 28)
         , description='Load event feedback data from Google Sheet to BigQuery'
     ) as dag:
 
@@ -232,8 +238,8 @@ with DAG(
             , 'task_id': 'gsheet_to_json_object'
             , 'bq_dataset_name': bq_raw_data_dataset
         }
-        , retries=3
-        , retry_delay=60
+        # , retries=3
+        # , retry_delay=60
     )
 
     transformer_header = PythonOperator(

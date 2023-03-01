@@ -32,7 +32,7 @@ def _transformer_header(ti, **kwargs):
 
         print("Before transformation: ", df.columns)
 
-        df['Event'] = event.title()
+        df['Event'] = event.upper()
     
         for pattern in drop_patterns:
             df = df[df.columns.drop(list(df.filter(regex=pattern)))]
@@ -240,28 +240,16 @@ def _transformer_data_cleansing(ti, **kwargs):
         })
 
         ## Change case to title and upper for abbreviations
-        df['Instansi'] = df['Instansi'].str.title()
+        df['Instansi'] = df['Instansi'].str.upper()
 
-        def to_approriate_case(x):
-            if x is "NA":
-                return "NA"
-
-            tmp = x.split(' ')
-            
-            for i in range(len(tmp)):
-                found = re.search(
-                    r'(?!ng[skg])(?!ggl)(?!nch)(?!chm)(([^aiueoAIUEO ]){3}|(I[tp]b)|(Pt)|(Pepb)|(It)|(Ubd)|(Sman))'
-                    , tmp[i]
-                )
-                
-                if found:
-                    tmp[i] = tmp[i].upper()
-
-            return ' '.join(tmp)
-
-        df['Instansi'] = df['Instansi'].apply(lambda x: to_approriate_case(x))
     except KeyError:
         df['Instansi'] = "NA"
+
+    # change all float column to integer
+    for col in df.columns:
+        if df[col].dtype == 'float64':
+            df[col] = df[col].fillna(0)
+            df[col] = df[col].astype('int64')
 
     df_dict = df.to_dict('records')
     events = df['Event'].unique().tolist()

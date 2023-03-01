@@ -40,8 +40,8 @@ def _gsheet_sensor(ti, **kwargs):
 
     gdrive_service = build('drive', 'v3', credentials=CREDENTIALS)
 
-    search_start_date = datetime.strptime(kwargs.get('ts'), '%Y-%m-%dT%H:%M:%S%z') - timedelta(days=7)
-    search_end_date = datetime.strptime(kwargs.get('ts'), '%Y-%m-%dT%H:%M:%S%z')
+    search_start_date = datetime.strptime(kwargs.get('ts'), '%Y-%m-%dT%H:%M:%S%z') # - timedelta(days=7)
+    search_end_date = datetime.strptime(kwargs.get('ts'), '%Y-%m-%dT%H:%M:%S%z') + timedelta(days=7)
     search_start_date = search_start_date.strftime('%Y-%m-%dT%H:%M:%S')
     search_end_date = search_end_date.strftime('%Y-%m-%dT%H:%M:%S')
 
@@ -53,8 +53,12 @@ def _gsheet_sensor(ti, **kwargs):
             q=f"""
                 mimeType='application/vnd.google-apps.spreadsheet'
                 and not name contains 'output'
-                and modifiedTime >= '{ search_start_date }'
-                and modifiedTime <= '{ search_end_date }'
+                and (
+                    (createdTime >= '{ search_start_date }'
+                    and createdTime <= '{ search_end_date }')
+                    or (modifiedTime >= '{ search_start_date }'
+                    and modifiedTime <= '{ search_end_date }')
+                )
             """
             , fields="nextPageToken, files(id, name, owners, createdTime, modifiedTime)"
         ).execute()
@@ -199,7 +203,7 @@ with DAG(
         dag_id='gsheet_to_bq_raw'
         , default_args=args
         , schedule_interval='0 3 * * 1' # every monday at 3am
-        , start_date=datetime(2022, 10, 1)
+        , start_date=datetime(2022, 6, 1)
         # , end_date=datetime(2023, 2, 28)
         , description='Load event feedback data from Google Sheet to BigQuery'
     ) as dag:

@@ -9,8 +9,8 @@ def column_transformer_for_bq(df):
 
     return json.loads(df.to_json(orient='records'))
 
-
 def _transformer_header(ti, **kwargs):
+    import json
     import os.path
     
     dfs = []
@@ -27,12 +27,18 @@ def _transformer_header(ti, **kwargs):
     # Define the regex patterns to drop certain columns
     drop_patterns = ['[Ff]ollow', '[Mm]erge', 'no', '[Pp]resensi']
 
+    # Define mandatory columns
+    # Load from file `transformation/mandatory_columns.json` into a dictionary
+    json_file_path = os.path.join(dag_folder, 'mandatory_columns.json')
+    with open(json_file_path, 'r') as f:
+        mandatory_columns = json.load(f)
+    
     for df, event in zip(df_json_objects, events):
         df = pd.DataFrame(df)
 
         print("Before transformation: ", df.columns)
 
-        df['Event'] = event.upper()
+        df['Event'] = event.title()
     
         for pattern in drop_patterns:
             df = df[df.columns.drop(list(df.filter(regex=pattern)))]
@@ -43,6 +49,10 @@ def _transformer_header(ti, **kwargs):
         if len(tmp_cols) > 0:
             df['Kepuasan terhadap Pemateri'] = df[tmp_cols].mean(axis=1).round()
             df = df[df.columns.drop(list(df.filter(like='Pemaparan materi oleh ')))]
+
+        for key, val in mandatory_columns.items():
+            if key not in df.columns:
+                df[key] = "NA" if val == 'object' else np.NaN
 
         print("After transformation: ", df.columns)
         dfs.append(df.to_dict(orient='records'))
@@ -60,9 +70,8 @@ def _transformer_data_enrichment(ti, **kwargs):
     # Concat dataframes to optimize the transformation
     df = pd.concat(dfs).reset_index(drop=True)
 
-
     def get_email_domain(df):
-        """ Get email domain, if KeyError create a new column with NaN """
+        """ Get email domain, if KeyError create a new column with NA """
         try:
             df['Email Domain'] = df['Email'].apply(
                 lambda x: str(x).split('@')[-1] if not pd.isna(x) else "NA"
@@ -73,13 +82,13 @@ def _transformer_data_enrichment(ti, **kwargs):
         return df
     
     def get_student_year(df):
-        """Get student year, if KeyError create a new column with NaN"""
+        """Get student year, if KeyError create a new column with NA"""
         try:
             df['Tahun Angkatan Peserta'] = df['NPM'].apply(
-                lambda x: str(x)[:2] if not pd.isna(x) else "0"
+                lambda x: int('20' + str(x)[:2]) if str(x) != "NA" else 0
             )
         except KeyError:
-            df['Tahun Angkatan Peserta'] = "0"
+            df['Tahun Angkatan Peserta'] = 0
         
         return df
 
@@ -103,18 +112,18 @@ def _transformer_hide_pii(ti, **kwargs):
     )
 
     def hide_student_id(df):
-        """ Hide student ID (NPM), if KeyError create a new column with NaN """
+        """ Hide student ID (NPM), if KeyError create a new column with NA """
         try:
             df['NPM'] = df['NPM'].apply(
-                lambda x: str(x)[:2] + '*' * (len(str(x)) - 3) + str(x)[-1] if not pd.isna(x) else "0"
+                lambda x: str(x)[:2] + '*' * (len(str(x)) - 3) + str(x)[-1] if not pd.isna(x) else "NA"
             )
         except KeyError:
-            df['NPM'] = "0"
+            df['NPM'] = "NA"
 
         return df
 
     def hide_student_name(df):
-        """ Hide student name, if KeyError create a new column with NaN"""
+        """ Hide student name, if KeyError create a new column with NA"""
         try:
             df['Nama Lengkap'] = df['Nama Lengkap'].apply(
                 lambda x: str(x)[0] + '*' * (len(str(x)) - 2) + str(x)[-1] if not pd.isna(x) else "NA"
@@ -125,7 +134,7 @@ def _transformer_hide_pii(ti, **kwargs):
         return df
 
     def hide_email_username(df):
-        """ Hide email username, if KeyError create a new column with NaN """
+        """ Hide email username, if KeyError create a new column with NA """
         try:
             df['Email'] = df['Email'].apply(
                 lambda x: str(x).split('@')[0][0]
@@ -161,12 +170,6 @@ def _transformer_data_cleansing(ti, **kwargs):
     except KeyError:
         pass
     
-    # Events
-    # try:
-    #     df['Event'] = df['Event'].replace(regex={r'.*OFFLINE.*': 'Talkshow Silogy Fest'})
-    # except KeyError:
-    #     df['Event'] = "NA"
-
     # Pekerjaan
     try:
         df['Pekerjaan'] = df['Pekerjaan'].replace({
@@ -186,70 +189,124 @@ def _transformer_data_cleansing(ti, **kwargs):
         ## Change case to lower and strip whitespaces
         df['Program Studi'] = df['Program Studi'].str.lower().str.strip()
 
-        ## Replace values and change case to title
-        df['Program Studi'] = df['Program Studi'].replace(
-            regex={
-                r'.*siste(m?) infor(a?)ma(s?)i$|teknik informasi|ti': 'teknik informatika'
+        ## Replace values
+        df['Program Studi'] = df['Program Studi'].replace(regex={
+                r'.*siste(m?) infor(a?)ma(s?)i$': 'sistem informasi'
                 , r'.*te[kh]nik inf(or|ro)matika$': 'teknik informatika'
                 , r'.*teknik (elektro$|elektro.*(\d$))': 'teknik elektro'
-                , r'^\s*$|^unsika$': "NA"
-                , r's1 pendidikan agama islam': 'pendidikan agama islam'
-                , r'informatika komputer': 'informatics computer'
-                , r'rpl': 'rekayasa perangkat lunak'
-                , r's1 informatika': 'informatika'
-                , r's1 ilmu hukum': 'ilmu hukum'
-                , r'd3 akuntansi': 'akuntansi'
-                , r'd3kebidanan': 'kebidanan'
-            }
-        ).str.title()
+        })
+
+        df['Program Studi'] = df['Program Studi'].replace({
+                's1 pendidikan agama islam': 'pendidikan agama islam'
+                , 'informatika komputer': 'informatics computer'
+                , 'teknik informasi': 'teknik informatika'
+                , 'rpl': 'rekayasa perangkat lunak'
+                , 's1 informatika': 'informatika'
+                , 's1 ilmu hukum': 'ilmu hukum'
+                , 'd3 akuntansi': 'akuntansi'
+                , 'd3kebidanan': 'kebidanan'
+                , 'ti': 'teknik informatika'
+        })
+
+        df['Program Studi'] = df['Program Studi'].replace(
+            ['', 'unsika'], "NA"
+        )
+        
+        # Change case to title
+        df['Program Studi'] = df['Program Studi'].str.title()
+
     except KeyError:
         df['Program Studi'] = "NA"
 
     # Instansi
 
     try:
+        def fix_univ_abbrev(df):
+            """ Fix university abbreviations """
+
+            df['Instansi'] = df['Instansi'].apply(          
+                lambda x: x.replace('univ ', 'universitas ') if type(x) is str else x
+            )
+        
+            return df
+
         ## Remove special characters
         df['Instansi'] = df['Instansi'].replace('[^A-Za-z0-9]+', ' ', regex=True)
 
         ## Change case to lower and strip whitespaces
         df['Instansi'] = df['Instansi'].str.lower().str.strip()
 
-        ## Replace abbreviations
-        df['Instansi'] = df['Instansi'].apply(
-            lambda x: "NA" if type(x) is not 'str' else x.replace('univ ', 'universitas ')
+        ## Fix university abbreviations
+        df = fix_univ_abbrev(df)
+
+        ## Replace values
+        df['Instansi'] = df['Instansi'].replace(
+            '(.*unsika.*|.*si[nb]g(a?).*)', 'universitas singaperbangsa karawang', regex=True
         )
 
+        df.loc[
+            (df['Instansi'] == 'fakultas ilmu komputer teknik informatika') |
+            (df['Instansi'] == 'teknik informatika') |
+            (df['Instansi'] == 'himsika') |
+            (df['Instansi'] == 'himtika') |
+            (df['Instansi'] == 'ilmu hukum') |
+            (df['Instansi'] == 'kebidanan') |
+            (df['Instansi'] == 'akuntansi') |
+            (df['Instansi'] == 'universitas')
+            , ['Instansi']
+        ] = 'universitas singaperbangsa karawang'
+
+        df.loc[
+            (df['Instansi'] == 'ubp') |
+            (df['Instansi'] == 'ubp karawang') |
+            (df['Instansi'] == 'ubp karawang teknik informatika') |
+            (df['Instansi'] == 'universitas buana perjuangan') |
+            (df['Instansi'] == 'universitas buana perjuangan karawanh') | 
+            (df['Instansi'] == 'universitas buana karawang') | 
+            (df['Instansi'] == 'unibersitas buana perjuangan karawang') | 
+            (df['Instansi'] == 'unniversitas buana perjuangan karawang') |
+            ((df['Instansi'] == 'karawang') & (df['Email Domain'] == 'mhs.ubpkarawang.ac.id'))
+            , ['Instansi']
+        ] = 'universitas buana perjuangan karawang'
+
         df['Instansi'] = df['Instansi'].replace(regex={
-            r'(.*unsika.*|.*si[nb]g(a?).*)': 'universitas singaperbangsa karawang',
-            r'(fakultas ilmu komputer teknik informatika|teknik informatika|himsika|himtika|ilmu hukum|kebidanan|akuntansi|universitas)': 'universitas singaperbangsa karawang',
-            r'(ubp|ubp karawang|ubp karawang teknik informatika|universitas buana perjuangan|universitas buana perjuangan karawanh|universitas buana karawang|unibersitas buana perjuangan karawang|unniversitas buana perjuangan karawang|karawang)': 'universitas buana perjuangan karawang',
-            r'(.*unm.*|.*negeri makassar.*)': 'universitas negeri makassar',
-            r'.*islam nusantara.*': 'universitas islam nusantara',
-            r'.*wahid hasyim.*': 'universitas wahid hasyim',
-            r'.*gu.*darma.*': 'universitas gunadarma',
-            r'.*binaniaga.*': 'universitas bina niaga indonesia',
-            r'.*unikom.*': 'universitas komputer indonesia',
-            r'.*telkom.*': 'telkom university',
-            r'.*mercu.*': 'universitas mercu buana',
-            r'.*lp3i.*': 'lp3i college karawang',
-            r'.*smi.*': 'politeknik sukabumi',
-            r'ubsi': 'universitas bina sarana informatika',
-            r'upi': 'universitas pendidikan indonesia',
-            r'smk n 7 semarang': 'SMKN 7 Semarang',
-            r'^\s*$|mahasiswa|umum|tidak bekerja|programmer beginner|payment gateway|informatika|sistem informasi|karawang': "NA"
+                r'(.*unm.*|.*negeri makassar.*)': 'universitas negeri makassar'
+                , r'.*islam nusantara.*': 'universitas islam nusantara'
+                , r'.*wahid hasyim.*': 'universitas wahid hasyim'
+                , r'.*gu.*darma.*': 'universitas gunadarma'
+                , r'.*binaniaga.*': 'universitas bina niaga indonesia'
+                , r'.*unikom.*': 'universitas komputer indonesia'
+                , r'.*telkom.*': 'telkom university'
+                , r'.*mercu.*': 'universitas mercu buana'
+                , r'.*lp3i.*': 'lp3i college karawang'
+                , r'.*smi.*': 'politeknik sukabumi'
+                , r'ubsi': 'universitas bina sarana informatika'
+                , r'upi': 'universitas pendidikan indonesia'
+                , r'smk n 7 semarang': 'SMKN 7 Semarang'
         })
 
-        ## Change case to title and upper for abbreviations
-        df['Instansi'] = df['Instansi'].str.upper()
+        df['Instansi'] = df['Instansi'].replace(
+            [
+                '', 'mahasiswa', 'umum', 'tidak bekerja'
+                , 'programmer beginner', 'payment gateway'
+                , 'informatika', 'sistem informasi', 'karawang'
+            ]
+            , "NA"
+        )
+
+        ## Change case to title
+        df['Instansi'] = df['Instansi'].str.title()
 
     except KeyError:
         df['Instansi'] = "NA"
 
-    # change all float column to integer
+    # Change float to int
     for col in df.columns:
         if df[col].dtype == 'float64':
             df[col] = df[col].fillna(0)
             df[col] = df[col].astype('int64')
+
+    print(df.info())
 
     df_dict = df.to_dict('records')
     events = df['Event'].unique().tolist()

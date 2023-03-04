@@ -82,10 +82,26 @@ def _transformer_data_enrichment(ti, **kwargs):
         return df
     
     def get_student_year(df):
-        """Get student year, if KeyError create a new column with NA"""
+        """ Get 'student year' from 'email' that contain 'student.unsika'
+        , if KeyError create a new column with 0, if error create a new column with 0 """
+
+        def _get_year(x):
+            if x is np.NaN or 'student.unsika' not in x:
+                return np.NaN
+
+            try:
+                return int("20" + x[:2])
+            except ValueError:
+                print("Trying different way to extract year from email: {}".format(x))
+
+                return int("20" + x.split('@')[0][-5:-3])
+
+                
+
         try:
-            df['Tahun Angkatan Peserta'] = df['NPM'].apply(
-                lambda x: int('20' + str(x)[:2]) if str(x) != "NA" else 0
+            df['Tahun Angkatan Peserta'] = df['Email'].apply(
+                lambda x: _get_year(x)
+                # lambda x: int('20' + str(x)[:2]) if str(x) != "NA" else 0
             )
         except KeyError:
             df['Tahun Angkatan Peserta'] = 0
@@ -96,8 +112,8 @@ def _transformer_data_enrichment(ti, **kwargs):
     df['Timestamp'] = pd.to_datetime(df['Timestamp'])
     df['Tahun Acara'] = df['Timestamp'].apply(lambda x: x.year)
     
-    df = get_student_year(df)
     df = get_email_domain(df)
+    df = get_student_year(df)
 
     df['Timestamp'] = df['Timestamp'].astype(str)
     ti.xcom_push(key='event_data_cleansed', value=df.to_dict(orient='records'))

@@ -201,7 +201,7 @@ def _event_data_cleansed_to_json_object(ti, **kwargs):
     return 'event_data_cleansed_to_json_object'
 
 with DAG(
-        dag_id='gsheet_to_bq_raw'
+        dag_id='gsheet_to_bq'
         , default_args=args
         , schedule_interval='0 3 * * 1' # every monday at 3am
         , start_date=datetime(2022, 6, 1)

@@ -36,7 +36,7 @@ with DAG(
         , schedule_interval='0 3 * * 1' # every monday at 3am
         , start_date=datetime(2022, 6, 1)
         # , end_date=datetime(2023, 2, 28)
-        , description='Load data warehouse tables in BigQuery for analytics'
+        , description='Create data warehouse tables in BigQuery'
     ) as dag:
 
     get_success_signal = ExternalTaskSensor(

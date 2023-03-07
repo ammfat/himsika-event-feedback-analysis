@@ -5,6 +5,7 @@ from airflow import DAG
 from airflow.contrib.operators.bigquery_operator import BigQueryOperator
 from airflow.operators.python import PythonOperator
 from airflow.sensors.external_task_sensor import ExternalTaskSensor
+from datetime import datetime
 from transformation.sql import Query
 
 # SETUP CREDENTIALS
@@ -20,14 +21,14 @@ args = {
 }
 
 bq_raw_data_dataset = 'raw_data'
-bq_event_feedback_dataset = 'event_feedback'
-bq_dwh_event_dataset = 'dwh_event'
+bq_event_dataset_name = 'event_feedback'
+bq_dwh_dataset_name = 'dwh_event'
 
 query = Query(
     project_id=PROJECT_ID
-    , raw_data_dataset=bq_raw_data_dataset
-    , event_feedback_dataset=bq_event_feedback_dataset
-    , dwh_event_dataset=bq_dwh_event_dataset
+    , bq_raw_data_dataset_name=bq_raw_data_dataset
+    , bq_event_dataset_name=bq_event_dataset_name
+    , bq_dwh_dataset_name=bq_dwh_dataset_name
 )
 
 with DAG(
@@ -70,7 +71,7 @@ with DAG(
 
     create_bq_professions_history = BigQueryOperator(
         task_id='create_bq_professions_history'
-        , sql=query.get_sql_professions_history()
+        , sql=query.get_sql_dim_professions_history()
         , use_legacy_sql=False
     )
 

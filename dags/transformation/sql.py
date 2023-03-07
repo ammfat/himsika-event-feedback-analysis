@@ -1,14 +1,9 @@
-class Query(
-        project_id
-        , bq_event_dataset_name
-        , bq_raw_data_dataset_name
-        , bq_dwh_dataset_name
-    ):
-
+class Query:
     def __init__(
         self
-        , bq_event_dataset_name
+        , project_id
         , bq_raw_data_dataset_name
+        , bq_event_dataset_name
         , bq_dwh_dataset_name
     ):
         self.project_id = project_id
@@ -20,11 +15,13 @@ class Query(
         self.set_dim_instances()
         self.set_dim_degree_programs()
         self.set_dim_professions()
+        self.set_fact_rates_by_responses()
+        self.set_view_rates_by_responses()
 
     def set_dim_events(self):
         self.dim_events_history = f"""
             CREATE OR REPLACE TABLE
-            `{self.project_id}.{bq_dwh_dataset_name}.dim_events_history` (
+            `{self.project_id}.{self.bq_dwh_dataset_name}.dim_events_history` (
                 id BYTES
                 , event_name STRING
                 , cabinet STRING
@@ -42,7 +39,7 @@ class Query(
                 , date AS insert_date
                 , tahun_acara AS year
                 FROM
-                `{self.project_id}.{bq_event_dataset_name}.*`
+                `{self.project_id}.{self.bq_event_dataset_name}.*`
             ), cte_join_cabinet AS (
                 SELECT
                 MD5(ev.event_name) AS id
@@ -52,7 +49,7 @@ class Query(
                 FROM
                 cte_group_event ev
                 JOIN
-                `{self.project_id}.{bq_raw_data_dataset_name}.cabinet` ca
+                `{self.project_id}.{self.bq_raw_data_dataset_name}.cabinet` ca
                 ON ev.year = ca.end_year
             )
             SELECT
@@ -67,7 +64,7 @@ class Query(
 
         self.dim_events = f"""
         CREATE OR REPLACE TABLE
-        `{self.project_id}.{bq_dwh_dataset_name}.dim_events`
+        `{self.project_id}.{self.bq_dwh_dataset_name}.dim_events`
         AS (
         WITH cte_min_max_insert_date AS (
             SELECT
@@ -75,7 +72,7 @@ class Query(
             , MIN(insert_date) OVER(PARTITION BY event_name) AS held_at
             , MAX(insert_date) OVER(PARTITION BY event_name) AS last_responded_feedback_at
             FROM
-            `{self.project_id}.{bq_dwh_dataset_name}.dim_events_history`
+            `{self.project_id}.{self.bq_dwh_dataset_name}.dim_events_history`
         )
         SELECT
             * EXCEPT(insert_date)
@@ -91,7 +88,7 @@ class Query(
     def set_dim_instances(self):
         self.dim_instances_history = f"""
         CREATE OR REPLACE TABLE
-        `{self.project_id}.{bq_dwh_dataset_name}.dim_instances_history` (
+        `{self.project_id}.{self.bq_dwh_dataset_name}.dim_instances_history` (
             id BYTES
             , instance_name STRING
             , insert_date DATE
@@ -106,7 +103,7 @@ class Query(
             END AS instance_name
             , date AS insert_date
             FROM
-            `{self.project_id}.{bq_event_dataset_name}.*`
+            `{self.project_id}.{self.bq_event_dataset_name}.*`
         )
         SELECT
             DISTINCT MD5(instance_name) AS id
@@ -119,14 +116,14 @@ class Query(
 
         self.dim_instances = f"""
         CREATE OR REPLACE TABLE
-        `{self.project_id}.{bq_dwh_dataset_name}.dim_instances`
+        `{self.project_id}.{self.bq_dwh_dataset_name}.dim_instances`
         AS (
         WITH cte_max_insert_date AS (
             SELECT
             *
             , MAX(insert_date) OVER(PARTITION BY instance_name) AS max_insert_date
             FROM
-            `{self.project_id}.{bq_dwh_dataset_name}.dim_instances_history`
+            `{self.project_id}.{self.bq_dwh_dataset_name}.dim_instances_history`
         )
         SELECT
             * EXCEPT(insert_date, max_insert_date)
@@ -140,10 +137,10 @@ class Query(
         )
         """
 
-    def set_degree_programs(self):
+    def set_dim_degree_programs(self):
         self.dim_degree_programs_history = f"""
         CREATE OR REPLACE TABLE
-        `{self.project_id}.{bq_dwh_dataset_name}.dim_degree_programs_history` (
+        `{self.project_id}.{self.bq_dwh_dataset_name}.dim_degree_programs_history` (
             id BYTES
             , degree_program_name STRING
             , insert_date DATE
@@ -158,7 +155,7 @@ class Query(
             END AS degree_program_name
             , date AS insert_date
             FROM
-            `{self.project_id}.{bq_event_dataset_name}.*`
+            `{self.project_id}.{self.bq_event_dataset_name}.*`
         )
         SELECT
             DISTINCT MD5(degree_program_name) AS id
@@ -171,14 +168,14 @@ class Query(
 
         self.dim_degree_programs = f"""
         CREATE OR REPLACE TABLE
-        `{self.project_id}.{bq_dwh_dataset_name}.dim_degree_programs`
+        `{self.project_id}.{self.bq_dwh_dataset_name}.dim_degree_programs`
         AS (
         WITH cte_max_insert_date AS (
             SELECT
             *
             , MAX(insert_date) OVER(PARTITION BY degree_program_name) AS max_insert_date
             FROM
-            `{self.project_id}.{bq_dwh_dataset_name}.dim_degree_programs_history`
+            `{self.project_id}.{self.bq_dwh_dataset_name}.dim_degree_programs_history`
         )
         SELECT
             * EXCEPT(insert_date, max_insert_date)
@@ -195,14 +192,14 @@ class Query(
     def set_dim_professions(self):
         self.dim_professions_history = f"""
         CREATE OR REPLACE TABLE
-        `{self.project_id}.{bq_dwh_dataset_name}.dim_professions`
+        `{self.project_id}.{self.bq_dwh_dataset_name}.dim_professions`
         AS (
         WITH cte_max_insert_date AS (
             SELECT
             *
             , MAX(insert_date) OVER(PARTITION BY profession_name) AS max_insert_date
             FROM
-            `{self.project_id}.{bq_dwh_dataset_name}.dim_professions_history`
+            `{self.project_id}.{self.bq_dwh_dataset_name}.dim_professions_history`
         )
         SELECT
             * EXCEPT(insert_date, max_insert_date)
@@ -218,14 +215,14 @@ class Query(
 
         self.dim_professions = f"""
             CREATE OR REPLACE TABLE
-            `{self.project_id}.{bq_dwh_dataset_name}.dim_professions`
+            `{self.project_id}.{self.bq_dwh_dataset_name}.dim_professions`
             AS (
             WITH cte_max_insert_date AS (
                 SELECT
                 *
                 , MAX(insert_date) OVER(PARTITION BY profession_name) AS max_insert_date
                 FROM
-                `{self.project_id}.{bq_dwh_dataset_name}.dim_professions_history`
+                `{self.project_id}.{self.bq_dwh_dataset_name}.dim_professions_history`
             )
             SELECT
                 * EXCEPT(insert_date, max_insert_date)
@@ -242,7 +239,7 @@ class Query(
     def set_fact_rates_by_responses(self):
         self.fact_rates_by_responses = f"""
         CREATE OR REPLACE TABLE
-        `{self.project_id}.{bq_dwh_dataset_name}.fact_rates_by_responses`
+        `{self.project_id}.{self.bq_dwh_dataset_name}.fact_rates_by_responses`
         PARTITION BY
         DATE_TRUNC(timestamp, MONTH)
         AS (
@@ -271,7 +268,7 @@ class Query(
             , keikutsertaan_lanjutan AS revisit_expectation
             , kritik_dan_saran AS feedback_comments
             FROM
-            `{self.project_id}.{bq_event_dataset_name}.*`
+            `{self.project_id}.{self.bq_event_dataset_name}.*`
         ), cte_generate_id AS (
             SELECT
             * EXCEPT(events, instances, degree_programs, professions)
@@ -306,7 +303,7 @@ class Query(
     def set_view_rates_by_responses(self):
         self.view_rates_by_responses = f"""
         CREATE OR REPLACE VIEW
-        `{self.project_id}.{bq_dwh_dataset_name}.view_rates_by_responses`
+        `{self.project_id}.{self.bq_dwh_dataset_name}.view_rates_by_responses`
         AS (
         SELECT
             feedbacks.timestamp
@@ -332,18 +329,18 @@ class Query(
             , AVG(feedbacks.mc_rates) AS avg_mc_rates
             , AVG(feedbacks.moderator_rates) AS avg_moderator_rates
         FROM 
-            `{self.project_id}.{bq_dwh_dataset_name}.fact_rates_by_responses` AS feedbacks
+            `{self.project_id}.{self.bq_dwh_dataset_name}.fact_rates_by_responses` AS feedbacks
         JOIN
-            `{self.project_id}.{bq_dwh_dataset_name}.dim_events` AS events
+            `{self.project_id}.{self.bq_dwh_dataset_name}.dim_events` AS events
             ON feedbacks.event_id = events.id
         JOIN
-            `{self.project_id}.{bq_dwh_dataset_name}.dim_instances` AS instances
+            `{self.project_id}.{self.bq_dwh_dataset_name}.dim_instances` AS instances
             ON feedbacks.instance_id = instances.id
         JOIN
-            `{self.project_id}.{bq_dwh_dataset_name}.dim_degree_programs` AS degree_programs
+            `{self.project_id}.{self.bq_dwh_dataset_name}.dim_degree_programs` AS degree_programs
             ON feedbacks.degree_program_id = degree_programs.id
         JOIN
-            `{self.project_id}.{bq_dwh_dataset_name}.dim_professions` AS professions
+            `{self.project_id}.{self.bq_dwh_dataset_name}.dim_professions` AS professions
             ON feedbacks.profession_id = professions.id
         GROUP BY
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
@@ -369,6 +366,9 @@ class Query(
 
     def get_sql_dim_degree_programs(self):
         return self.dim_degree_programs
+
+    def get_sql_dim_professions_history(self):
+        return self.dim_professions_history
 
     def get_sql_dim_professions(self):
         return self.dim_professions

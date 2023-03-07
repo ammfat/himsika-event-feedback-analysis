@@ -5,6 +5,7 @@ from airflow import DAG
 from airflow.exceptions import AirflowSkipException
 from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator
+from airflow.operators.dummy_operator import DummyOperator
 from datetime import datetime, timedelta
 
 from transformation.transformers import column_transformer_for_bq
@@ -294,12 +295,8 @@ with DAG(
         # , retry_delay=60
     )
 
-    signal_to_dwh_dag = BashOperator(
+    signal_to_dwh_dag = DummyOperator(
         task_id='signal_to_dwh_dag'
-        , bash_command="""
-            mkdir -p /signal/{{ ds_nodash }};
-            touch /signal/{{ ds_nodash }}/_SUCCESS;
-            """
     )
 
     get_dag_details >> gsheet_sensor >> task_resume_decision_maker >> gsheet_to_json_object

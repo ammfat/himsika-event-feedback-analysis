@@ -42,10 +42,10 @@ with DAG(
 
     get_success_signal = ExternalTaskSensor(
         task_id='get_success_signal'
-        , poke_interval=10
-        , retries=2
-        # , timeout=60
-        # , mode='reschedule'
+        , poke_interval=15
+        # , retries=2
+        , timeout=45
+        , mode='reschedule'
         , soft_fail=True
         , external_dag_id='gsheet_to_bq'
         , external_task_id='signal_to_dwh_dag'

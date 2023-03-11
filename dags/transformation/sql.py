@@ -191,26 +191,22 @@ class Query:
 
     def set_dim_professions(self):
         self.dim_professions_history = f"""
-        CREATE OR REPLACE TABLE
-        `{self.project_id}.{self.bq_dwh_dataset_name}.dim_professions`
-        AS (
-        WITH cte_max_insert_date AS (
+            CREATE OR REPLACE TABLE
+            `{self.project_id}.{self.bq_dwh_dataset_name}.dim_professions_history` (
+                id BYTES
+                , profession_name STRING
+                , insert_date DATE
+            )
+            PARTITION BY
+            DATE_TRUNC(insert_date, MONTH)
+            AS (
             SELECT
-            *
-            , MAX(insert_date) OVER(PARTITION BY profession_name) AS max_insert_date
+                DISTINCT MD5(pekerjaan) AS id
+                , pekerjaan AS profession_name
+                , date AS insert_date
             FROM
-            `{self.project_id}.{self.bq_dwh_dataset_name}.dim_professions_history`
-        )
-        SELECT
-            * EXCEPT(insert_date, max_insert_date)
-            , max_insert_date AS last_modified_at
-        FROM
-            cte_max_insert_date
-        WHERE
-            insert_date = max_insert_date
-        ORDER BY
-            profession_name
-        )
+                `{self.project_id}.{self.bq_event_dataset_name}.*`
+            )
         """
 
         self.dim_professions = f"""
@@ -308,6 +304,7 @@ class Query:
         SELECT
             feedbacks.timestamp
             , events.event_name
+            , events.cabinet
             , events.held_at
             , instances.instance_name
             , degree_programs.degree_program_name
@@ -343,7 +340,7 @@ class Query:
             `{self.project_id}.{self.bq_dwh_dataset_name}.dim_professions` AS professions
             ON feedbacks.profession_id = professions.id
         GROUP BY
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
         ORDER BY
             1 DESC
         )

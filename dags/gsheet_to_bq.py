@@ -24,8 +24,8 @@ args = {
     'owner': 'ammfat',
 }
 
-bq_raw_data_dataset = 'raw_data_experiment'
-bq_event_feedback_dataset = 'event_feedback_experiment'
+bq_raw_data_dataset = 'raw_data'
+bq_event_feedback_dataset = 'event_feedback'
 
 # DAG
 
@@ -218,21 +218,21 @@ with DAG(
     gsheet_sensor = PythonOperator(
         task_id='gsheet_sensor'
         , python_callable=_gsheet_sensor
-        , retries=3
+        , retries=2
         , retry_delay=60
     )
 
     task_resume_decision_maker = PythonOperator(
         task_id='task_resume_decision_maker'
         , python_callable=_task_resume_decision_maker
-        , retries=3
+        , retries=2
         , retry_delay=60
     )
 
     gsheet_to_json_object = PythonOperator(
         task_id='gsheet_to_json_object'
         , python_callable=_gsheet_to_json_object
-        , retries=3
+        , retries=2
         , retry_delay=60
     )
 
@@ -244,42 +244,42 @@ with DAG(
             , 'task_id': 'gsheet_to_json_object'
             , 'bq_dataset_name': bq_raw_data_dataset
         }
-        # , retries=3
-        # , retry_delay=60
+        , retries=2
+        , retry_delay=60
     )
 
     transformer_header = PythonOperator(
         task_id='transformer_header'
         , python_callable=_transformer_header
-        # , retries=3
+        # , retries=2
         # , retry_delay=60
     )
 
     transformer_data_enrichment = PythonOperator(
         task_id='transformer_data_enrichment'
         , python_callable=_transformer_data_enrichment
-        # , retries=3
+        # , retries=2
         # , retry_delay=60
     )
 
     transformer_hide_pii = PythonOperator(
         task_id='transformer_hide_pii'
         , python_callable=_transformer_hide_pii
-        # , retries=3
+        # , retries=2
         # , retry_delay=60
     )
 
     transformer_data_cleansing = PythonOperator(
         task_id='transformer_data_cleansing'
         , python_callable=_transformer_data_cleansing
-        # , retries=3
+        # , retries=2
         # , retry_delay=60
     )
 
     event_data_cleansed_to_json_object = PythonOperator(
         task_id='event_data_cleansed_to_json_object'
         , python_callable=_event_data_cleansed_to_json_object
-        # , retries=3
+        # , retries=2
         # , retry_delay=60
     )
 
@@ -291,8 +291,8 @@ with DAG(
             , 'task_id': 'event_data_cleansed_to_json_object'
             , 'bq_dataset_name': bq_event_feedback_dataset
         }
-        # , retries=3
-        # , retry_delay=60
+        , retries=2
+        , retry_delay=60
     )
 
     signal_to_dwh_dag = DummyOperator(

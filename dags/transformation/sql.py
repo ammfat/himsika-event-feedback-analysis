@@ -300,6 +300,8 @@ class Query:
         self.view_rates_by_responses = f"""
         CREATE OR REPLACE VIEW
         `{self.project_id}.{self.bq_dwh_dataset_name}.view_rates_by_responses`
+        PARTITION BY
+        DATE_TRUNC(timestamp, MONTH)
         AS (
         SELECT
             feedbacks.timestamp

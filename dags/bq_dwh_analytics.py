@@ -105,8 +105,8 @@ with DAG(
         , use_legacy_sql=False
     )
 
-    create_sql_view_rates_by_responses = BigQueryOperator(
-        task_id='create_sql_view_rates_by_responses'
+    create_sql_view_fact_rates_by_responses = BigQueryOperator(
+        task_id='create_sql_view_fact_rates_by_responses'
         , sql=query.get_sql_view_rates_by_responses()
         , use_legacy_sql=False
     )
@@ -128,4 +128,4 @@ with DAG(
         , create_bq_dim_instances
         , create_bq_dim_degree_programs
         , create_bq_dim_professions
-    ] >> create_fact_rates_by_responses >> create_sql_view_rates_by_responses
+    ] >> create_fact_rates_by_responses >> create_sql_view_fact_rates_by_responses

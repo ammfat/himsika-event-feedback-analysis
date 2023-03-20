@@ -16,7 +16,7 @@ class Query:
         self.set_dim_degree_programs()
         self.set_dim_professions()
         self.set_fact_rates_by_responses()
-        self.set_view_rates_by_responses()
+        self.set_view_fact_rates_by_responses()
 
     def set_dim_events(self):
         self.dim_events_history = f"""
@@ -234,117 +234,133 @@ class Query:
 
     def set_fact_rates_by_responses(self):
         self.fact_rates_by_responses = f"""
-        CREATE OR REPLACE TABLE
-        `{self.project_id}.{self.bq_dwh_dataset_name}.fact_rates_by_responses`
-        PARTITION BY
-        DATE_TRUNC(timestamp, MONTH)
-        AS (
-        WITH cte_cleansing AS (
+            CREATE OR REPLACE TABLE
+            `{self.project_id}.{self.bq_dwh_dataset_name}.fact_rates_by_responses`
+            PARTITION BY
+            DATE_TRUNC(timestamp, MONTH)
+            AS (
+            WITH cte_cleansing AS (
+                SELECT
+                timestamp
+                , CASE
+                    WHEN CONTAINS_SUBSTR(lower(event), 'talkshow silogy fest') THEN "Talkshow Silogy Fest"
+                    ELSE INITCAP(event)
+                    END AS events
+                , CASE
+                    WHEN instansi = 'Na' THEN 'NA' ELSE instansi
+                    END AS instances
+                , CASE
+                    WHEN program_studi = 'Na' THEN 'NA' ELSE program_studi
+                    END AS degree_programs
+                , tahun_angkatan_peserta AS student_year
+                , pekerjaan AS professions
+                , kepuasan_terhadap_pemateri AS speaker_rates
+                , kepuasan_terhadap_manajemen AS management_rates
+                , kepuasan_terhadap_keseluruhan_acara AS overall_event_rates
+                , kepuasan_terhadap_durasi AS duration_rates
+                , tingkat_kemenarikan_topik AS topic_rates
+                , performa_mc AS mc_rates
+                , performa_moderator AS moderator_rates
+                , keikutsertaan_lanjutan AS revisit_expectation
+                , kritik_dan_saran AS feedback_comments
+                FROM
+                `{self.project_id}.{self.bq_event_dataset_name}.*`
+            ), cte_generate_id AS (
+                SELECT
+                * EXCEPT(events, instances, degree_programs, professions)
+                , MD5(events) AS event_id
+                , MD5(instances) AS instance_id
+                , MD5(degree_programs) AS degree_program_id
+                , MD5(professions) AS profession_id
+                FROM
+                cte_cleansing
+            ), cte_fact_calculation AS (
+                SELECT
+                timestamp
+                , event_id
+                , instance_id
+                , degree_program_id
+                , profession_id
+                , student_year
+                , revisit_expectation
+                , feedback_comments
+                , speaker_rates
+                , management_rates
+                , overall_event_rates
+                , duration_rates
+                , topic_rates
+                , mc_rates
+                , moderator_rates
+                , AVG(speaker_rates) AS avg_speaker_rates
+                , AVG(management_rates) AS avg_management_rates
+                , AVG(overall_event_rates) AS avg_overall_event_rates
+                , AVG(duration_rates) AS avg_duration_rates
+                , AVG(topic_rates) AS avg_topic_rates
+                , AVG(mc_rates) AS avg_mc_rates
+                , AVG(moderator_rates) AS avg_moderator_rates
+                FROM 
+                cte_generate_id
+                GROUP BY
+                    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+                ORDER BY
+                    1 DESC
+            )
             SELECT
-            timestamp
-            , CASE
-                WHEN CONTAINS_SUBSTR(lower(event), 'talkshow silogy fest') THEN "Talkshow Silogy Fest"
-                ELSE INITCAP(event)
-                END AS events
-            , CASE
-                WHEN instansi = 'Na' THEN 'NA' ELSE instansi
-                END AS instances
-            , CASE
-                WHEN program_studi = 'Na' THEN 'NA' ELSE program_studi
-                END AS degree_programs
-            , tahun_angkatan_peserta AS student_year
-            , pekerjaan AS professions
-            , kepuasan_terhadap_pemateri AS speaker_rates
-            , kepuasan_terhadap_manajemen AS management_rates
-            , kepuasan_terhadap_keseluruhan_acara AS overall_event_rates
-            , kepuasan_terhadap_durasi AS duration_rates
-            , tingkat_kemenarikan_topik AS topic_rates
-            , performa_mc AS mc_rates
-            , performa_moderator AS moderator_rates
-            , keikutsertaan_lanjutan AS revisit_expectation
-            , kritik_dan_saran AS feedback_comments
+                *
             FROM
-            `{self.project_id}.{self.bq_event_dataset_name}.*`
-        ), cte_generate_id AS (
-            SELECT
-            * EXCEPT(events, instances, degree_programs, professions)
-            , MD5(events) AS event_id
-            , MD5(instances) AS instance_id
-            , MD5(degree_programs) AS degree_program_id
-            , MD5(professions) AS profession_id
-            FROM
-            cte_cleansing
-        )
-        SELECT
-            timestamp
-            , event_id
-            , instance_id
-            , degree_program_id
-            , profession_id
-            , student_year
-            , revisit_expectation
-            , feedback_comments
-            , speaker_rates
-            , management_rates
-            , overall_event_rates
-            , duration_rates
-            , topic_rates
-            , mc_rates
-            , moderator_rates
-        FROM 
-            cte_generate_id
-        )
+                cte_fact_calculation
+            )
         """
 
-    def set_view_rates_by_responses(self):
-        self.view_rates_by_responses = f"""
-        CREATE OR REPLACE VIEW
-        `{self.project_id}.{self.bq_dwh_dataset_name}.view_rates_by_responses`
-        PARTITION BY
-        DATE_TRUNC(timestamp, MONTH)
-        AS (
-        SELECT
-            feedbacks.timestamp
-            , events.event_name
-            , events.cabinet
-            , events.held_at
-            , instances.instance_name
-            , degree_programs.degree_program_name
-            , professions.profession_name
-            , feedbacks.feedback_comments
-            , feedbacks.revisit_expectation
-            , feedbacks.speaker_rates
-            , feedbacks.management_rates
-            , feedbacks.overall_event_rates
-            , feedbacks.duration_rates
-            , feedbacks.topic_rates
-            , feedbacks.mc_rates
-            , feedbacks.moderator_rates
-            , AVG(feedbacks.speaker_rates) AS avg_speaker_rates
-            , AVG(feedbacks.management_rates) AS avg_management_rates
-            , AVG(feedbacks.overall_event_rates) AS avg_overall_event_rates
-            , AVG(feedbacks.duration_rates) AS avg_duration_rates
-            , AVG(feedbacks.topic_rates) AS avg_topic_rates
-            , AVG(feedbacks.mc_rates) AS avg_mc_rates
-            , AVG(feedbacks.moderator_rates) AS avg_moderator_rates
-        FROM 
-            `{self.project_id}.{self.bq_dwh_dataset_name}.fact_rates_by_responses` AS feedbacks
-        JOIN
-            `{self.project_id}.{self.bq_dwh_dataset_name}.dim_events` AS events
-            ON feedbacks.event_id = events.id
-        JOIN
-            `{self.project_id}.{self.bq_dwh_dataset_name}.dim_instances` AS instances
-            ON feedbacks.instance_id = instances.id
-        JOIN
-            `{self.project_id}.{self.bq_dwh_dataset_name}.dim_degree_programs` AS degree_programs
-            ON feedbacks.degree_program_id = degree_programs.id
-        JOIN
-            `{self.project_id}.{self.bq_dwh_dataset_name}.dim_professions` AS professions
-            ON feedbacks.profession_id = professions.id
-        GROUP BY
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
-        ORDER BY
-            1 DESC
+    def set_view_fact_rates_by_responses(self):
+        self.view_fact_rates_by_responses = f"""
+            CREATE OR REPLACE VIEW
+            `{self.project_id}.{self.bq_dwh_dataset_name}.view_fact_rates_by_responses`
+            PARTITION BY
+            DATE_TRUNC(timestamp, MONTH)
+            AS (
+            SELECT
+                feedbacks.timestamp
+                , events.event_name
+                , events.cabinet
+                , events.held_at
+                , instances.instance_name
+                , degree_programs.degree_program_name
+                , professions.profession_name
+                , feedbacks.feedback_comments
+                , feedbacks.revisit_expectation
+                , feedbacks.speaker_rates
+                , feedbacks.management_rates
+                , feedbacks.overall_event_rates
+                , feedbacks.duration_rates
+                , feedbacks.topic_rates
+                , feedbacks.mc_rates
+                , feedbacks.moderator_rates
+                , feedbacks.avg_speaker_rates
+                , feedbacks.avg_management_rates
+                , feedbacks.avg_overall_event_rates
+                , feedbacks.avg_duration_rates
+                , feedbacks.avg_topic_rates
+                , feedbacks.avg_mc_rates
+                , feedbacks.avg_moderator_rates
+            FROM 
+                `{self.project_id}.{self.bq_dwh_dataset_name}.fact_rates_by_responses` AS feedbacks
+            JOIN
+                `{self.project_id}.{self.bq_dwh_dataset_name}.dim_events` AS events
+                ON feedbacks.event_id = events.id
+            JOIN
+                `{self.project_id}.{self.bq_dwh_dataset_name}.dim_instances` AS instances
+                ON feedbacks.instance_id = instances.id
+            JOIN
+                `{self.project_id}.{self.bq_dwh_dataset_name}.dim_degree_programs` AS degree_programs
+                ON feedbacks.degree_program_id = degree_programs.id
+            JOIN
+                `{self.project_id}.{self.bq_dwh_dataset_name}.dim_professions` AS professions
+                ON feedbacks.profession_id = professions.id
+            GROUP BY
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+            ORDER BY
+                1 DESC
         )
         """
 
@@ -375,5 +391,5 @@ class Query:
     def get_sql_fact_rates_by_responses(self):
         return self.fact_rates_by_responses
 
-    def get_sql_view_rates_by_responses(self):
-        return self.view_rates_by_responses
+    def get_sql_view_fact_rates_by_responses(self):
+        return self.view_fact_rates_by_responses

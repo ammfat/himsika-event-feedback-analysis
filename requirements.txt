@@ -1,4 +1,6 @@
 apache-airflow-providers-google==8.7.0
+google-api-core==2.8.2
 google-auth==2.16.0
 gspread==5.4.0
 python-dotenv==0.21.0
+setuptools>=59.1.1,<59.7.0

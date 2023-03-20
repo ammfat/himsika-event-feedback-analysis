@@ -316,8 +316,6 @@ class Query:
         self.view_fact_rates_by_responses = f"""
             CREATE OR REPLACE VIEW
             `{self.project_id}.{self.bq_dwh_dataset_name}.view_fact_rates_by_responses`
-            PARTITION BY
-            DATE_TRUNC(timestamp, MONTH)
             AS (
             SELECT
                 feedbacks.timestamp
@@ -357,11 +355,7 @@ class Query:
             JOIN
                 `{self.project_id}.{self.bq_dwh_dataset_name}.dim_professions` AS professions
                 ON feedbacks.profession_id = professions.id
-            GROUP BY
-                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
-            ORDER BY
-                1 DESC
-        )
+            )
         """
 
     def get_sql_dim_events_history(self):

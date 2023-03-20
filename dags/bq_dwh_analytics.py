@@ -107,7 +107,7 @@ with DAG(
 
     create_sql_view_fact_rates_by_responses = BigQueryOperator(
         task_id='create_sql_view_fact_rates_by_responses'
-        , sql=query.get_sql_view_rates_by_responses()
+        , sql=query.get_sql_view_fact_rates_by_responses()
         , use_legacy_sql=False
     )
 

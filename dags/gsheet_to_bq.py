@@ -29,20 +29,12 @@ bq_event_feedback_dataset = 'event_feedback'
 
 # DAG
 
-def _get_dag_details(**kwargs):
-    return {
-        'project_id': PROJECT_ID
-        , 'bq_raw_data_dataset': bq_raw_data_dataset
-        , 'bq_event_feedback_dataset': bq_event_feedback_dataset
-        , 'exec_timestamp': kwargs.get('ts')
-    }
-
 def _gsheet_sensor(ti, **kwargs):
     from googleapiclient.discovery import build
 
     gdrive_service = build('drive', 'v3', credentials=CREDENTIALS)
 
-    search_start_date = datetime.strptime(kwargs.get('ts'), '%Y-%m-%dT%H:%M:%S%z') # - timedelta(days=7)
+    search_start_date = datetime.strptime(kwargs.get('ts'), '%Y-%m-%dT%H:%M:%S%z')
     search_end_date = datetime.strptime(kwargs.get('ts'), '%Y-%m-%dT%H:%M:%S%z') + timedelta(days=7)
     search_start_date = search_start_date.strftime('%Y-%m-%dT%H:%M:%S')
     search_end_date = search_end_date.strftime('%Y-%m-%dT%H:%M:%S')
@@ -210,11 +202,6 @@ with DAG(
         , description='Load event feedback data from Google Sheet to BigQuery'
     ) as dag:
 
-    get_dag_details = PythonOperator(
-        task_id='get_dag_details'
-        , python_callable=_get_dag_details
-    )
-
     gsheet_sensor = PythonOperator(
         task_id='gsheet_sensor'
         , python_callable=_gsheet_sensor
@@ -299,7 +286,7 @@ with DAG(
         task_id='signal_to_dwh_dag'
     )
 
-    get_dag_details >> gsheet_sensor >> task_resume_decision_maker >> gsheet_to_json_object
+    gsheet_sensor >> task_resume_decision_maker >> gsheet_to_json_object
     gsheet_to_json_object >> [json_object_to_bq_raw_data, transformer_header]
     transformer_header >> transformer_data_enrichment >> transformer_hide_pii
     transformer_hide_pii >> transformer_data_cleansing >> event_data_cleansed_to_json_object

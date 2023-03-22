@@ -96,12 +96,9 @@ def _transformer_data_enrichment(ti, **kwargs):
 
                 return int("20" + x.split('@')[0][-5:-3])
 
-                
-
         try:
             df['Tahun Angkatan Peserta'] = df['Email'].apply(
                 lambda x: _get_year(x)
-                # lambda x: int('20' + str(x)[:2]) if str(x) != "NA" else 0
             )
         except KeyError:
             df['Tahun Angkatan Peserta'] = 0
@@ -131,7 +128,8 @@ def _transformer_hide_pii(ti, **kwargs):
         """ Hide student ID (NPM), if KeyError create a new column with NA """
         try:
             df['NPM'] = df['NPM'].apply(
-                lambda x: str(x)[:2] + '*' * (len(str(x)) - 3) + str(x)[-1] if not pd.isna(x) else "NA"
+                lambda x: str(x)[:2] + '*' * (len(str(x)) - 3) + str(x)[-1]
+                if not pd.isna(x) else "NA"
             )
         except KeyError:
             df['NPM'] = "NA"
@@ -142,7 +140,8 @@ def _transformer_hide_pii(ti, **kwargs):
         """ Hide student name, if KeyError create a new column with NA"""
         try:
             df['Nama Lengkap'] = df['Nama Lengkap'].apply(
-                lambda x: str(x)[0] + '*' * (len(str(x)) - 2) + str(x)[-1] if not pd.isna(x) else "NA"
+                lambda x: str(x)[0] + '*' * (len(str(x)) - 2) + str(x)[-1]
+                if not pd.isna(x) else "NA"
             )
         except KeyError:
             df['Nama Lengkap'] = "NA"

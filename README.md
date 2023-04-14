@@ -22,7 +22,7 @@ An initiative project to build data-driven culture at the Association of Informa
 1. Add Google Cloud/Application service account (SA) credential file in **creds** directory.
 
     ```
-    mv some_location/the_sa_credential.json creds/service_account.json
+    mv some_location/the_sa_credential.json .creds/service_account.json
     ```
 
 1. Build and run the Airflow migration container.

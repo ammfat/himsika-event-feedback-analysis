@@ -8,6 +8,11 @@ An initiative project to build data-driven culture at the Association of Informa
 
 ## How to
 
+1. Setup project directories.
+    ```
+    mkdir .creds/ .logs/ .plugins/
+    ```
+
 1. Setup environment variables.
 
     ```

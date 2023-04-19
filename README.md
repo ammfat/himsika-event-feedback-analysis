@@ -6,6 +6,12 @@ An initiative project to build data-driven culture at the Association of Informa
 
 ---
 
+## Publication
+
+- [Medium](https://medium.com/mlearning-ai/how-i-use-data-engineering-to-start-the-data-driven-culture-in-a-student-organization-part-1-d146221a76a2)
+
+- [Undergraduate Thesis](https://drive.google.com/file/d/13GqtH5ehW1sCZHYeBDOJ5bevsavWej_2/view?usp=sharing)
+
 ## How to
 
 1. Setup project directories.

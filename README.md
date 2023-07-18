@@ -12,6 +12,8 @@ An initiative project to build data-driven culture at the Association of Informa
 
 - [Undergraduate Thesis](https://drive.google.com/file/d/13GqtH5ehW1sCZHYeBDOJ5bevsavWej_2/view?usp=sharing)
 
+- [Dimensional Data Design for Event Feedback Data Warehouse](https://doi.org/10.31326/jisa.v6i1.1648)
+
 ## How to
 
 1. Setup project directories.
